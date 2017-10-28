@@ -14,7 +14,7 @@ FROM_EMAIL  = os.environ['email_ramen']
 FROM_PWD    = os.environ['gmail_pass']
 SMTP_SERVER = "imap.gmail.com"
 SMTP_PORT   = 993
-
+DEBUG = True
 
 # Extra Stuff
 def setUpConnection():
@@ -29,7 +29,7 @@ def gather_venmo_ids(mail):
     """ Return Emails with Venmo Subject in your Inbox"""
     mail.select('inbox')
     # Gather any email with "paid you" subject line
-    typ, data = mail.search(None, '(SUBJECT "paid you")')
+    typ, data = mail.search(None, '(SUBJECT "paid you")', 'FROM', 'VENMO')
     mail_ids = data[0].split()
     
     return mail_ids
@@ -67,8 +67,8 @@ def parseGoods(subject, note, timestamp, ramen_bank):
     """ Gather the Name, Amount, and Note """
    
     email_time=timestamp + datetime.timedelta(hours=1) 
-    current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timdelta(hours=8)
-    if email_time >= current_time:
+    current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timedelta(hours=8)
+    if email_time >= current_time or DEBUG:
         subject_list = subject.split(" ")
         
         # Name Parsing
