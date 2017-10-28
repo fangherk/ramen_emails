@@ -1,10 +1,9 @@
-import os
+import os, os.path
 import smtplib, imaplib
 import time, datetime
 import email, email.parser, email.utils
 import dateutil.parser, datetime, pytz
-import re
-import os.path
+import subprocess
 
 from bs4 import BeautifulSoup
 from bs4 import Comment
@@ -73,28 +72,28 @@ def parseGoods(subject, note, timestamp, ramen_bank):
  
     email_time=timestamp
     
-    ## Check for existences of past orders
-    if not os.path.exists("past_orders.txt"):
-        open("past_orders.txt", 'w').close()
+    # ## Check for existences of past orders
+    # if not os.path.exists("past_orders.txt"):
+    #     open("past_orders.txt", 'w').close()
 
-    ## Check Past Venmo Orders
-    with open('past_orders.txt', 'r') as original: 
-        lines = original.readlines()
-        last_lines = lines[-5:]
-        for line in last_lines:
-            # print("{}\n{}".format(line,email_time))
-            if line.rstrip() == email_time.isoformat():  
-                print("Ordered in the past")
-                return
-    original.close()
-    
+    # ## Check Past Venmo Orders
+    # with open('past_orders.txt', 'r') as original: 
+    #     lines = original.readlines()
+    #     last_lines = lines[-5:]
+    #     for line in last_lines:
+    #         # print("{}\n{}".format(line,email_time))
+    #         if line.rstrip() == email_time.isoformat():  
+    #             print("Ordered in the past")
+    #             return
+    # original.close()
+    # 
 
-    ## Add to Future Venmo Order
-    with open('past_orders.txt', 'a') as modified: 
-        modified.write(email_time.isoformat()+"\n")
-        print("Succesfully written")
-    modified.close()
-    
+    # ## Add to Future Venmo Order
+    # with open('past_orders.txt', 'a') as modified: 
+    #     modified.write(email_time.isoformat()+"\n")
+    #     print("Succesfully written")
+    # modified.close()
+    # 
 
     current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timedelta(hours=8)
     if email_time + datetime.timedelta(hours=1) >= current_time or DEBUG:
@@ -113,23 +112,32 @@ def parseGoods(subject, note, timestamp, ramen_bank):
         print("{} {:.2f} ".format(name, amount))
         
         # Note Parsing
-        total_paid = amount
-        orders = [order for order in note.split() if len(order)==2]
-        for order in orders:
-            if order in ramen_bank:
-                if total_paid - cost  >= 0:
-                    cost = ramen_bank[order]
-                    total_paid -= cost
-                    # call(["sudo ./ramen", "-k", order])
-                    print('Order filled {} '.format(order))
-                else: 
-                    print("Insufficient Funds Bro, Chill")
-        print("Motor Logic Completed")
+        # Test mode
+        order = "A1"
+        process = subprocess.call(["sudo","./ramen",order])
+        print("Finished Vending Motor")
+
+
+        # total_paid = amount
+        # orders = [order for order in note.split() if len(order)==2]
+        # for order in orders:
+        #     if order in ramen_bank:
+        #         if total_paid - cost  >= 0:
+        #             cost = ramen_bank[order]
+        #             total_paid -= cost
+        #             process = subprocess.call(["sudo ./ramen" + order])
+        #             process.wait()
+        #             print('Order filled {} '.format(order))
+        #         else: 
+        #             print("Insufficient Funds Bro, Chill")
+        print("All Motor Logic Completed")
     else:
         print("Time too old {}".format(email_time))
     
 def mainLoop():
-    ramen_bank = {}
+    ramen_bank = {"A1": 0.50, "A2": 0.50, "A3": 0.50, "A4":0.50,
+                  "B1": 0.50, "B2": 0.50, "B3": 0.50, "B4":0.50,
+                  "C1": 0.50, "C2": 0.50, "C3": 0.50, "C4":0.50,}
     try:
         mail = setUpConnection()
         mail_ids = gather_venmo_ids(mail)
