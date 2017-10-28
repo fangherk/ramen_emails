@@ -4,6 +4,7 @@ import time, datetime
 import email, email.parser, email.utils
 import dateutil.parser, datetime, pytz
 import re
+import os.path
 
 from bs4 import BeautifulSoup
 from bs4 import Comment
@@ -39,7 +40,7 @@ def gather_venmo_ids(mail):
 def parse_venmo_msgs(mail, mail_ids, ramen_bank):
     """ Parse Through Emails """
     
-    for i in mail_ids[-10:]:            
+    for i in mail_ids[-5:]:            
         typ, msg_data = mail.fetch(i, '(BODY.PEEK[TEXT])')
         typ2, msg_data_2 = mail.fetch(i, '(BODY[HEADER])')
 
@@ -62,16 +63,41 @@ def parse_venmo_msgs(mail, mail_ids, ramen_bank):
                 note= soup.find("p").text
                 #print(note.text)
 
-        print("Starting to parse name, amount, and more")
+        print("--------------------------")
+        print("Starting to PARSE Message:")
         parseGoods(subject, note, timestamp, ramen_bank) 
 
 
 def parseGoods(subject, note, timestamp, ramen_bank):
     """ Gather the Name, Amount, and Note """
-   
-    email_time=timestamp + datetime.timedelta(hours=1) 
+ 
+    email_time=timestamp
+    
+    ## Check for existences of past orders
+    if not os.path.exists("past_orders.txt"):
+        file("past_orders.txt", 'w').close()
+
+    ## Check Past Venmo Orders
+    with open('past_orders.txt', 'r') as original: 
+        lines = original.readlines()
+        last_lines = lines[-5:]
+        for line in last_lines:
+            # print("{}\n{}".format(line,email_time))
+            if line.rstrip() == email_time.isoformat():  
+                print("Ordered in the past")
+                return
+    original.close()
+    
+
+    ## Add to Future Venmo Order
+    with open('past_orders.txt', 'a') as modified: 
+        modified.write(email_time.isoformat()+"\n")
+        print("Succesfully written")
+    modified.close()
+    
+
     current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timedelta(hours=8)
-    if email_time >= current_time or DEBUG:
+    if email_time + datetime.delta(hours=1) >= current_time or DEBUG:
         print("Time is current at {}".format(email_time))
         subject_list = subject.split(" ")
         
@@ -94,7 +120,7 @@ def parseGoods(subject, note, timestamp, ramen_bank):
                 if total_paid - cost  >= 0:
                     cost = ramen_bank[order]
                     total_paid -= cost
-                    # call(["./ramen_swag", "-k", order])
+                    # call(["sudo ./ramen", "-k", order])
                     print('Order filled {} '.format(order))
                 else: 
                     print("Insufficient Funds Bro, Chill")
