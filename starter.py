@@ -2,15 +2,19 @@ import os
 import smtplib, imaplib
 import time, datetime
 import email, email.parser, email.utils
+import dateutil.parser, datetime, pytz
+import re
 
 from bs4 import BeautifulSoup
 from bs4 import Comment
+from subprocess import call
 
 # Main Settings
 FROM_EMAIL  = os.environ['email_ramen']
 FROM_PWD    = os.environ['gmail_pass']
 SMTP_SERVER = "imap.gmail.com"
 SMTP_PORT   = 993
+
 
 # Extra Stuff
 def setUpConnection():
@@ -24,68 +28,90 @@ def setUpConnection():
 def gather_venmo_ids(mail):
     """ Return Emails with Venmo Subject in your Inbox"""
     mail.select('inbox')
-    typ, data = mail.search(None, 'FROM', 'VENMO')
-
+    # Gather any email with "paid you" subject line
+    typ, data = mail.search(None, '(SUBJECT "paid you")')
     mail_ids = data[0].split()
     
     return mail_ids
 
-def parse_venmo_msgs(mail, mail_ids):
+def parse_venmo_msgs(mail, mail_ids, ramen_bank):
     """ Parse Through Emails """
     
     for i in mail_ids[-10:]:            
-        typ, msg_data = mail.fetch(i, '(RFC822)' )
-        
+        typ, msg_data = mail.fetch(i, '(BODY.PEEK[TEXT])')
+        typ2, msg_data_2 = mail.fetch(i, '(BODY[HEADER])')
 
+        # Get the Subject Line
+        for response_part in msg_data_2:
+            if isinstance(response_part, tuple):
+                email_parser2 = email.parser.BytesFeedParser()
+                email_parser2.feed(response_part[1])
+                msg2 = email_parser2.close()
+                subject = msg2["SUBJECT"]
+                timestamp = msg2["Received"].split(";")[1].strip()
+                timestamp = dateutil.parser.parse(timestamp)
+                #print(msg2["SUBJECT"])
+
+        # Get the note
         for response_part in msg_data:
             if isinstance(response_part, tuple):
-                email_parser = email.parser.BytesFeedParser()
-                email_parser.feed(response_part[1])
-                msg = email_parser.close()
+                full_msg = response_part[1]
+                soup=BeautifulSoup(full_msg,'html.parser')
+                note= soup.find("p").text
+                #print(note.text)
 
-                # print(msg)
-                # Check if we have a standard Venmo Subject line
-                message_subject = msg['SUBJECT']
-                if "paid you" in message_subject:
-                    
-                    typ, msg_data = mail.fetch(i, '(BODY.PEEK[TEXT])')
-                    for response_part in msg_data:
-                        if isinstance(response_part, tuple):
-                            full_msg = response_part[1]
-                            soup=BeautifulSoup(full_msg,'html.parser')
-                            note= soup.find("p")
-                            print(note.text)
-                            # print(note.text[0:2])
+        parseGoods(subject, note, timestamp, ramen_bank) 
 
-                    # get the timestamp
-                    # timestamp = msg["Received"].split(";")[1].strip()
-                    # # print(timestamp)
-                    # parsedate = email.utils.parsedate(timestamp)
-                    # # Time logic 
-                    # current_time = time.mktime(time.localtime())
-                    # email_time = time.mktime(parsedate)
 
-                    # if email_time < current_time:
-                    doSomething(msg, message_subject)
+def parseGoods(subject, note, timestamp, ramen_bank):
+    """ Gather the Name, Amount, and Note """
+   
+    email_time=timestamp + datetime.timedelta(hours=1) 
+    current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timdelta(hours=8)
+    if email_time >= current_time:
+        subject_list = subject.split(" ")
+        
+        # Name Parsing
+        index_paid = subject_list.index("paid")
+        name = " ".join(subject_list[:index_paid])
 
-def main():
+        # Amount Parsing
+        index_you = subject_list.index("you") +1
+        amount = " ".join(subject_list[index_you:])
+        amount = float(amount[1:])
+
+        print("{} {:.2f} ".format(name, amount))
+        
+        # Note Parsing
+        total_paid = amount
+        orders = [order for order in note.split() if len(order)==2]
+        for order in orders:
+            if order in ramen_bank:
+                if total_paid - cost  >= 0:
+                    cost = ramen_bank[order]
+                    total_paid -= cost
+                    # call(["./ramen_swag", "-k", order])
+                    print('Order filled {} '.format(order))
+                else: 
+                    print("Insufficient Funds Bro, Chill")
+
+    else:
+        print("Too old")
+    
+def mainLoop():
+    ramen_bank = {}
     try:
         mail = setUpConnection()
         mail_ids = gather_venmo_ids(mail)
-        parse_venmo_msgs(mail, mail_ids)
+        parse_venmo_msgs(mail, mail_ids, ramen_bank)
 
     except Exception as e:
         print(str(e))
 
+def main():
 
-
-def doSomething(msg, message):
-    string = message.split(" ")
-    index = string.index("paid")
-    person = " ".join(string[:index])
-
-    # print(msg)
-    
+    mainLoop()
+    time.sleep(1)
 
 if __name__ == "__main__":
     main()
