@@ -72,32 +72,33 @@ def parseGoods(subject, note, timestamp, ramen_bank):
  
     email_time=timestamp
     
-    # ## Check for existences of past orders
-    # if not os.path.exists("past_orders.txt"):
-    #     open("past_orders.txt", 'w').close()
+    ## Check for existences of past orders
+    if not os.path.exists("past_orders.txt"):
+        open("past_orders.txt", 'w').close()
 
-    # ## Check Past Venmo Orders
-    # with open('past_orders.txt', 'r') as original: 
-    #     lines = original.readlines()
-    #     last_lines = lines[-5:]
-    #     for line in last_lines:
-    #         # print("{}\n{}".format(line,email_time))
-    #         if line.rstrip() == email_time.isoformat():  
-    #             print("Ordered in the past")
-    #             return
-    # original.close()
-    # 
+    ## Check Past Venmo Orders
+    with open('past_orders.txt', 'r') as original: 
+        lines = original.readlines()
+        last_lines = lines[-5:]
+        for line in last_lines:
+            # print("{}\n{}".format(line,email_time))
+            if line.rstrip() == email_time.isoformat():  
+                print("Ordered in the past")
+                return
+    original.close()
+    
 
-    # ## Add to Future Venmo Order
-    # with open('past_orders.txt', 'a') as modified: 
-    #     modified.write(email_time.isoformat()+"\n")
-    #     print("Succesfully written")
-    # modified.close()
-    # 
+    ## Add to Future Venmo Order
+    with open('past_orders.txt', 'a') as modified: 
+        modified.write(email_time.isoformat()+"\n")
+        print("Succesfully written")
+    modified.close()
+    
 
     current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timedelta(hours=8)
-    if email_time + datetime.timedelta(hours=1) >= current_time or DEBUG:
-        print("Time is current at {}".format(email_time))
+    if email_time + datetime.timedelta(minutes=10) >= current_time:
+        print("------------------------------------")
+        print("Email Time is {}.".format(email_time))
         subject_list = subject.split(" ")
         
         # Name Parsing
@@ -109,27 +110,34 @@ def parseGoods(subject, note, timestamp, ramen_bank):
         amount = " ".join(subject_list[index_you:])
         amount = float(amount[1:])
 
-        print("{} {:.2f} ".format(name, amount))
+        print("{} @ ${:.2f} ".format(name, amount))
         
         # Note Parsing
         # Test mode
-        order = "A1"
-        process = subprocess.call(["sudo","./ramen",order])
-        print("Finished Vending Motor")
+        # print(type(ramen_bank["A1"]))
+        # print(ramen_bank["A1"])
+        print("------------------------------------")
+        # order = "A1"
+        # process = subprocess.call(["sudo","./ramen",order])
+        # print("Ramen Order" + order + "Served")
 
 
-        # total_paid = amount
-        # orders = [order for order in note.split() if len(order)==2]
-        # for order in orders:
-        #     if order in ramen_bank:
-        #         if total_paid - cost  >= 0:
-        #             cost = ramen_bank[order]
-        #             total_paid -= cost
-        #             process = subprocess.call(["sudo ./ramen" + order])
-        #             process.wait()
-        #             print('Order filled {} '.format(order))
-        #         else: 
-        #             print("Insufficient Funds Bro, Chill")
+        total_paid = amount
+        print("Total Starting Amount", amount)
+        print("Given Note: ", note)
+        orders = [order for order in note.split() if len(order)==2]
+        print(orders)
+        for order in orders:
+            if order in ramen_bank:
+                cost = ramen_bank[order]
+                if total_paid - cost  >= 0:
+                    print("Cost ", cost)
+                    total_paid -= cost
+                    print("Amount Left ", total_paid)
+                    process = subprocess.call(["sudo", "./ramen", order])
+                    print('Order filled {} '.format(order))
+                else: 
+                    print("Insufficient Funds Bro, Chill OR you are done.")
         print("All Motor Logic Completed")
     else:
         print("Time too old {}".format(email_time))
