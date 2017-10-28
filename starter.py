@@ -75,7 +75,7 @@ def parseGoods(subject, note, timestamp, ramen_bank):
     
     ## Check for existences of past orders
     if not os.path.exists("past_orders.txt"):
-        file("past_orders.txt", 'w').close()
+        open("past_orders.txt", 'w').close()
 
     ## Check Past Venmo Orders
     with open('past_orders.txt', 'r') as original: 
@@ -97,7 +97,7 @@ def parseGoods(subject, note, timestamp, ramen_bank):
     
 
     current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timedelta(hours=8)
-    if email_time + datetime.delta(hours=1) >= current_time or DEBUG:
+    if email_time + datetime.timedelta(hours=1) >= current_time or DEBUG:
         print("Time is current at {}".format(email_time))
         subject_list = subject.split(" ")
         
