@@ -22,6 +22,7 @@ def setUpConnection():
     mail = imaplib.IMAP4_SSL(SMTP_SERVER)
     mail.login(FROM_EMAIL,FROM_PWD)
 
+    print("Mail Connection Complete")
     return mail
 
 
@@ -32,6 +33,7 @@ def gather_venmo_ids(mail):
     typ, data = mail.search(None, '(SUBJECT "paid you")', 'FROM', 'VENMO')
     mail_ids = data[0].split()
     
+    print("Venmo Ids Gathered")
     return mail_ids
 
 def parse_venmo_msgs(mail, mail_ids, ramen_bank):
@@ -60,6 +62,7 @@ def parse_venmo_msgs(mail, mail_ids, ramen_bank):
                 note= soup.find("p").text
                 #print(note.text)
 
+        print("Starting to parse name, amount, and more")
         parseGoods(subject, note, timestamp, ramen_bank) 
 
 
@@ -69,6 +72,7 @@ def parseGoods(subject, note, timestamp, ramen_bank):
     email_time=timestamp + datetime.timedelta(hours=1) 
     current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timedelta(hours=8)
     if email_time >= current_time or DEBUG:
+        print("Time is current at {}".format(email_time))
         subject_list = subject.split(" ")
         
         # Name Parsing
@@ -94,9 +98,9 @@ def parseGoods(subject, note, timestamp, ramen_bank):
                     print('Order filled {} '.format(order))
                 else: 
                     print("Insufficient Funds Bro, Chill")
-
+        print("Motor Logic Completed")
     else:
-        print("Too old")
+        print("Time too old {}".format(email_time))
     
 def mainLoop():
     ramen_bank = {}
@@ -109,7 +113,6 @@ def mainLoop():
         print(str(e))
 
 def main():
-
     mainLoop()
     time.sleep(1)
 
