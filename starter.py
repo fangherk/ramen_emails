@@ -150,13 +150,17 @@ def mainLoop():
         mail = setUpConnection()
         mail_ids = gather_venmo_ids(mail)
         parse_venmo_msgs(mail, mail_ids, ramen_bank)
+        return
 
     except Exception as e:
         print(str(e))
 
 def main():
-    mainLoop()
-    time.sleep(1)
+    
+    while True:
+        mainLoop()
+        break
+        time.sleep(5)
 
 if __name__ == "__main__":
     main()
