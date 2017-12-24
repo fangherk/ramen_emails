@@ -1,10 +1,9 @@
-import os
+import os, os.path
 import smtplib, imaplib
 import time, datetime
 import email, email.parser, email.utils
 import dateutil.parser, datetime, pytz
-import re
-import os.path
+import subprocess
 
 from bs4 import BeautifulSoup
 from bs4 import Comment
@@ -75,7 +74,7 @@ def parseGoods(subject, note, timestamp, ramen_bank):
     
     ## Check for existences of past orders
     if not os.path.exists("past_orders.txt"):
-        file("past_orders.txt", 'w').close()
+        open("past_orders.txt", 'w').close()
 
     ## Check Past Venmo Orders
     with open('past_orders.txt', 'r') as original: 
@@ -97,8 +96,9 @@ def parseGoods(subject, note, timestamp, ramen_bank):
     
 
     current_time=datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)-datetime.timedelta(hours=8)
-    if email_time + datetime.delta(hours=1) >= current_time or DEBUG:
-        print("Time is current at {}".format(email_time))
+    if email_time + datetime.timedelta(minutes=10) >= current_time:
+        print("------------------------------------")
+        print("Email Time is {}.".format(email_time))
         subject_list = subject.split(" ")
         
         # Name Parsing
@@ -110,37 +110,57 @@ def parseGoods(subject, note, timestamp, ramen_bank):
         amount = " ".join(subject_list[index_you:])
         amount = float(amount[1:])
 
-        print("{} {:.2f} ".format(name, amount))
+        print("{} @ ${:.2f} ".format(name, amount))
         
         # Note Parsing
+        # Test mode
+        # print(type(ramen_bank["A1"]))
+        # print(ramen_bank["A1"])
+        print("------------------------------------")
+        # order = "A1"
+        # process = subprocess.call(["sudo","./ramen",order])
+        # print("Ramen Order" + order + "Served")
+
+
         total_paid = amount
+        print("Total Starting Amount", amount)
+        print("Given Note: ", note)
         orders = [order for order in note.split() if len(order)==2]
+        print(orders)
         for order in orders:
             if order in ramen_bank:
+                cost = ramen_bank[order]
                 if total_paid - cost  >= 0:
-                    cost = ramen_bank[order]
+                    print("Cost ", cost)
                     total_paid -= cost
-                    # call(["sudo ./ramen", "-k", order])
+                    print("Amount Left ", total_paid)
+                    process = subprocess.call(["sudo", "./ramen", order])
                     print('Order filled {} '.format(order))
                 else: 
-                    print("Insufficient Funds Bro, Chill")
-        print("Motor Logic Completed")
+                    print("Insufficient Funds Bro, Chill OR you are done.")
+        print("All Motor Logic Completed")
     else:
         print("Time too old {}".format(email_time))
     
 def mainLoop():
-    ramen_bank = {}
+    ramen_bank = {"A1": 0.50, "A2": 0.50, "A3": 0.50, "A4":0.50,
+                  "B1": 0.50, "B2": 0.50, "B3": 0.50, "B4":0.50,
+                  "C1": 0.50, "C2": 0.50, "C3": 0.50, "C4":0.50,}
     try:
         mail = setUpConnection()
         mail_ids = gather_venmo_ids(mail)
         parse_venmo_msgs(mail, mail_ids, ramen_bank)
+        return
 
     except Exception as e:
         print(str(e))
 
 def main():
-    mainLoop()
-    time.sleep(1)
+    
+    while True:
+        mainLoop()
+        break
+        time.sleep(5)
 
 if __name__ == "__main__":
     main()
